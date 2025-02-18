@@ -1,38 +1,42 @@
-version: '3.8'
-
 volumes:
   postgres-data:
+  redis-data:
+  rabbitmq-data:
 
 services:
-  app:
+  backend:
     build: 
       context: .
-      dockerfile: Dockerfile
-    env_file:
-        # Ensure that the variables in .env match the same variables in devcontainer.json
-        - .env
-
+      dockerfile: backend.Dockerfile
     volumes:
-      - ../..:/workspaces:cached
-      
-    # Overrides default command so things don't shut down after the process ends.
+      - ../backend:/workspaces/backend:cached
     command: sleep infinity
-
-    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
+    depends_on:
+      - db
+      - redis
+      - rabbitmq
+    environment:
+      - .env
     network_mode: service:db
 
-    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally. 
-    # (Adding the "ports" property to this file will not forward from a Codespace.)
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+  rabbitmq:
+    image: rabbitmq:latest
+    restart: unless-stopped
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    environment:
+      - .env
 
   db:
     image: postgres:latest
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    env_file:
-      # Ensure that the variables in .env match the same variables in devcontainer.json
+    environment:
       - .env
-
-
-    # Add "forwardPorts": ["5432"] to **devcontainer.json** to forward PostgreSQL locally.
-    # (Adding the "ports" property to this file will not forward from a Codespace.)
